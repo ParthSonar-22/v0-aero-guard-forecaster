@@ -26,10 +26,10 @@ interface CityAQI {
 }
 
 const getAQIColor = (aqi: number) => {
-  if (aqi <= 50) return { bg: '#10b981', text: 'Good', textColor: 'text-emerald-400' }
-  if (aqi <= 100) return { bg: '#22c55e', text: 'Moderate', textColor: 'text-green-400' }
-  if (aqi <= 150) return { bg: '#eab308', text: 'Unhealthy (Sensitive)', textColor: 'text-yellow-400' }
-  if (aqi <= 200) return { bg: '#f59e0b', text: 'Unhealthy', textColor: 'text-amber-400' }
+  if (aqi <= 50) return { bg: '#22c55e', text: 'Good', textColor: 'text-green-400' }
+  if (aqi <= 100) return { bg: '#3b82f6', text: 'Moderate', textColor: 'text-blue-400' }
+  if (aqi <= 150) return { bg: '#f59e0b', text: 'Unhealthy (Sensitive)', textColor: 'text-amber-400' }
+  if (aqi <= 200) return { bg: '#f97316', text: 'Unhealthy', textColor: 'text-orange-400' }
   if (aqi <= 300) return { bg: '#ef4444', text: 'Very Unhealthy', textColor: 'text-red-400' }
   return { bg: '#7c2d12', text: 'Hazardous', textColor: 'text-red-600' }
 }
@@ -283,16 +283,16 @@ export function WorldAQIMap() {
   }
 
   return (
-    <div className="relative w-full h-[600px] rounded-xl overflow-hidden border border-emerald-500/20 dark:border-white/10">
+    <div className="relative w-full h-[600px] rounded-xl overflow-hidden border border-blue-500/20 dark:border-blue-500/30">
       <div ref={mapRef} className="absolute inset-0 z-0" />
 
       {/* Loading State */}
       {(isLoading || !mapLoaded) && (
-        <div className="absolute inset-0 bg-slate-900/90 flex items-center justify-center z-30">
+        <div className="absolute inset-0 bg-slate-900/95 flex items-center justify-center z-30">
           <div className="flex flex-col items-center gap-3 text-white">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
             <span className="text-lg">Loading Live AQI Data...</span>
-            <span className="text-sm text-white/60">Fetching from Open-Meteo API</span>
+            <span className="text-sm text-white/60">Fetching from AQICN API</span>
           </div>
         </div>
       )}
@@ -313,7 +313,7 @@ export function WorldAQIMap() {
         <div className="flex gap-2">
           <Button
             onClick={() => handleViewChange('world')}
-            className={`${viewMode === 'world' ? 'bg-emerald-500 hover:bg-emerald-600' : 'glass hover:bg-white/10'} border-emerald-500/30 text-white`}
+            className={`${viewMode === 'world' ? 'bg-blue-500 hover:bg-blue-600' : 'glass hover:bg-white/10 bg-transparent'} border-blue-500/30 text-white`}
             size="sm"
           >
             <Globe className="w-4 h-4 mr-1" />
@@ -321,14 +321,14 @@ export function WorldAQIMap() {
           </Button>
           <Button
             onClick={() => handleViewChange('india')}
-            className={`${viewMode === 'india' ? 'bg-emerald-500 hover:bg-emerald-600' : 'glass hover:bg-white/10'} border-emerald-500/30 text-white`}
+            className={`${viewMode === 'india' ? 'bg-blue-500 hover:bg-blue-600' : 'glass hover:bg-white/10 bg-transparent'} border-blue-500/30 text-white`}
             size="sm"
           >
             India
           </Button>
         </div>
         <div className="glass px-3 py-1 rounded text-xs text-white/80">
-          {cities.length} cities loaded
+          {cities.length} cities - Real-time AQICN
         </div>
       </div>
 
@@ -337,7 +337,7 @@ export function WorldAQIMap() {
         <Button
           onClick={getUserLocation}
           disabled={isLocating}
-          className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-lg border-0"
+          className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-lg shadow-blue-500/30 border-0"
           size="sm"
           title="Find my location"
         >
@@ -351,7 +351,7 @@ export function WorldAQIMap() {
         <Button
           onClick={handleRefresh}
           disabled={isLoading}
-          className="glass border-emerald-500/30 text-white hover:bg-emerald-500/20"
+          className="glass border-blue-500/30 text-white hover:bg-blue-500/20 bg-transparent"
           size="sm"
           title="Refresh data"
         >
@@ -360,7 +360,7 @@ export function WorldAQIMap() {
 
         <Button
           onClick={() => handleZoom('in')}
-          className="glass border-emerald-500/30 text-white hover:bg-emerald-500/20"
+          className="glass border-blue-500/30 text-white hover:bg-blue-500/20 bg-transparent"
           size="sm"
         >
           <ZoomIn className="w-4 h-4" />
@@ -368,7 +368,7 @@ export function WorldAQIMap() {
         
         <Button
           onClick={() => handleZoom('out')}
-          className="glass border-emerald-500/30 text-white hover:bg-emerald-500/20"
+          className="glass border-blue-500/30 text-white hover:bg-blue-500/20 bg-transparent"
           size="sm"
         >
           <ZoomOut className="w-4 h-4" />
