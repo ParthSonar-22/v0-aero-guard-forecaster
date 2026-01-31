@@ -10,6 +10,7 @@ import { AQIChart } from '@/components/aqi-chart'
 import { SafetySuggestion } from '@/components/safety-suggestion'
 import { PollutionPieChart } from '@/components/pollution-pie-chart'
 import { MumbaiPollutionMap } from '@/components/mumbai-pollution-map'
+import { WorldAQIMap } from '@/components/world-aqi-map'
 import { Lightbulb, TrendingUp, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { HealthChatbot } from '@/components/health-chatbot'
@@ -280,48 +281,25 @@ export default function DashboardPage() {
           {activeTab === 'map' && (
             <>
               <div className="mb-6">
-                <h1 className="text-3xl font-bold text-foreground mb-2">Mumbai Pollution Map</h1>
-                <p className="text-muted-foreground">Real-time air quality across different areas</p>
+                <h1 className="text-3xl font-bold text-foreground mb-2">World Air Quality Map</h1>
+                <p className="text-muted-foreground">Live AQI data from cities around the world - Click markers for details</p>
               </div>
               
               <Card className="glass border-border/20 mb-6">
                 <CardHeader>
-                  <CardTitle>Interactive Pollution Heatmap</CardTitle>
-                  <CardDescription>Click markers to see detailed AQI information for each area</CardDescription>
+                  <CardTitle>Live Global AQI Monitor</CardTitle>
+                  <CardDescription>Real-time air quality data from major cities worldwide. Use World/India buttons to switch views.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <MumbaiPollutionMap />
-                  
-                  <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full bg-[#0f766e]" />
-                      <span className="text-sm">Good (0-50)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full bg-[#0ea5e9]" />
-                      <span className="text-sm">Moderate (51-100)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full bg-[#f59e0b]" />
-                      <span className="text-sm">Unhealthy (101-150)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full bg-[#ef4444]" />
-                      <span className="text-sm">Very Unhealthy (151-200)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full bg-[#7c2d12]" />
-                      <span className="text-sm">Hazardous (201+)</span>
-                    </div>
-                  </div>
+                  <WorldAQIMap />
                 </CardContent>
               </Card>
 
               {/* 12-Hour Forecast Section */}
               <Card className="glass border-border/20">
                 <CardHeader>
-                  <CardTitle>12-Hour AQI Forecast</CardTitle>
-                  <CardDescription>Click on any hour to see detailed weather and air quality predictions</CardDescription>
+                  <CardTitle>12-Hour AQI Forecast Graph</CardTitle>
+                  <CardDescription>Interactive line chart showing predicted AQI levels. Click on points for detailed forecasts.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <HourlyForecast />
