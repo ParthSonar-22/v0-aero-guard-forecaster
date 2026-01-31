@@ -18,6 +18,8 @@ import { AlertsTab } from '@/components/alerts-tab'
 import { SettingsTab } from '@/components/settings-tab'
 import { AnimatedBackground } from '@/components/animated-background'
 import { HourlyForecast } from '@/components/hourly-forecast'
+import { useMumbaiAQI, useAllCitiesAQI, useCityForecast } from '@/hooks/use-live-aqi'
+import { getAQIStatus as getLiveAQIStatus, getHealthRecommendation } from '@/lib/aqi-service'
 
 interface UserProfile {
   persona: string

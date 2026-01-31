@@ -111,21 +111,7 @@ export function AnimatedBackground() {
         }}
       />
 
-      {/* Animated gradient waves */}
-      <div className="absolute inset-0 opacity-40">
-        <div 
-          className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-transparent to-cyan-500/20"
-          style={{ animation: 'wave 15s linear infinite' }}
-        />
-        <div 
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-teal-500/10 to-transparent"
-          style={{ animation: 'wave 20s linear infinite', animationDelay: '-5s' }}
-        />
-        <div 
-          className="absolute inset-0 bg-gradient-to-b from-transparent via-amber-500/5 to-transparent"
-          style={{ animation: 'wave 25s linear infinite', animationDelay: '-10s' }}
-        />
-      </div>
+      
 
       {/* Glow orbs */}
       {glowOrbs.map((orb) => (
@@ -220,17 +206,7 @@ export function AnimatedBackground() {
         </div>
       ))}
 
-      {/* Grid pattern overlay */}
-      <div 
-        className="absolute inset-0 opacity-[0.02] dark:opacity-[0.04]"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(16, 185, 129, 0.5) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(16, 185, 129, 0.5) 1px, transparent 1px)
-          `,
-          backgroundSize: '60px 60px'
-        }}
-      />
+      
 
       {/* Subtle noise texture */}
       <div 
