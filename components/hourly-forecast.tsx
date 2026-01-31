@@ -234,13 +234,23 @@ export function HourlyForecast() {
       ctx.strokeStyle = getAQIColor(hour.aqi)
     })
 
-    // Draw with gradient stroke
+    // Draw with gradient stroke based on AQI colors
     const lineGradient = ctx.createLinearGradient(padding.left, 0, width - padding.right, 0)
     forecast.forEach((hour, i) => {
       lineGradient.addColorStop(i / (forecast.length - 1), getAQIColor(hour.aqi))
     })
     ctx.strokeStyle = lineGradient
     ctx.stroke()
+
+    // Draw "Live Data" indicator
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.8)'
+    ctx.beginPath()
+    ctx.arc(padding.left + 8, padding.top + 8, 4, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
+    ctx.font = '10px system-ui'
+    ctx.textAlign = 'left'
+    ctx.fillText('12-Hour Forecast', padding.left + 18, padding.top + 12)
 
     // Draw data points
     forecast.forEach((hour, i) => {

@@ -4,18 +4,9 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Navigation, Loader2, Globe, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react'
+import { Navigation, Loader2, Globe, ZoomIn, ZoomOut, RefreshCw, AlertCircle } from 'lucide-react'
 import { useSound } from '@/hooks/use-sound'
 import L from 'leaflet'
-
-interface AQIStation {
-  uid: number
-  aqi: string
-  station: {
-    name: string
-    geo: [number, number]
-  }
-}
 
 interface CityAQI {
   name: string
@@ -25,6 +16,13 @@ interface CityAQI {
   status: string
   color: string
   country: string
+  pm25?: number
+  pm10?: number
+  o3?: number
+  no2?: number
+  so2?: number
+  co?: number
+  lastUpdated?: string
 }
 
 const getAQIColor = (aqi: number) => {
@@ -36,112 +34,61 @@ const getAQIColor = (aqi: number) => {
   return { bg: '#7c2d12', text: 'Hazardous', textColor: 'text-red-600' }
 }
 
-// Major world cities with fallback AQI data
-const WORLD_CITIES: CityAQI[] = [
-  // India
-  { name: 'Delhi', aqi: 285, lat: 28.6139, lng: 77.209, status: 'Very Unhealthy', color: '#ef4444', country: 'India' },
-  { name: 'Mumbai', aqi: 168, lat: 19.076, lng: 72.8777, status: 'Unhealthy', color: '#f59e0b', country: 'India' },
-  { name: 'Kolkata', aqi: 195, lat: 22.5726, lng: 88.3639, status: 'Unhealthy', color: '#f59e0b', country: 'India' },
-  { name: 'Chennai', aqi: 89, lat: 13.0827, lng: 80.2707, status: 'Moderate', color: '#22c55e', country: 'India' },
-  { name: 'Bangalore', aqi: 112, lat: 12.9716, lng: 77.5946, status: 'Unhealthy (Sensitive)', color: '#eab308', country: 'India' },
-  { name: 'Hyderabad', aqi: 134, lat: 17.385, lng: 78.4867, status: 'Unhealthy (Sensitive)', color: '#eab308', country: 'India' },
-  { name: 'Pune', aqi: 145, lat: 18.5204, lng: 73.8567, status: 'Unhealthy (Sensitive)', color: '#eab308', country: 'India' },
-  { name: 'Ahmedabad', aqi: 178, lat: 23.0225, lng: 72.5714, status: 'Unhealthy', color: '#f59e0b', country: 'India' },
-  { name: 'Jaipur', aqi: 201, lat: 26.9124, lng: 75.7873, status: 'Very Unhealthy', color: '#ef4444', country: 'India' },
-  { name: 'Lucknow', aqi: 245, lat: 26.8467, lng: 80.9462, status: 'Very Unhealthy', color: '#ef4444', country: 'India' },
-  // China
-  { name: 'Beijing', aqi: 156, lat: 39.9042, lng: 116.4074, status: 'Unhealthy', color: '#f59e0b', country: 'China' },
-  { name: 'Shanghai', aqi: 89, lat: 31.2304, lng: 121.4737, status: 'Moderate', color: '#22c55e', country: 'China' },
-  { name: 'Guangzhou', aqi: 78, lat: 23.1291, lng: 113.2644, status: 'Moderate', color: '#22c55e', country: 'China' },
-  { name: 'Shenzhen', aqi: 65, lat: 22.5431, lng: 114.0579, status: 'Moderate', color: '#22c55e', country: 'China' },
-  // Southeast Asia
-  { name: 'Bangkok', aqi: 142, lat: 13.7563, lng: 100.5018, status: 'Unhealthy (Sensitive)', color: '#eab308', country: 'Thailand' },
-  { name: 'Jakarta', aqi: 165, lat: -6.2088, lng: 106.8456, status: 'Unhealthy', color: '#f59e0b', country: 'Indonesia' },
-  { name: 'Singapore', aqi: 52, lat: 1.3521, lng: 103.8198, status: 'Moderate', color: '#22c55e', country: 'Singapore' },
-  { name: 'Hanoi', aqi: 178, lat: 21.0285, lng: 105.8542, status: 'Unhealthy', color: '#f59e0b', country: 'Vietnam' },
-  // Middle East
-  { name: 'Dubai', aqi: 98, lat: 25.2048, lng: 55.2708, status: 'Moderate', color: '#22c55e', country: 'UAE' },
-  { name: 'Riyadh', aqi: 145, lat: 24.7136, lng: 46.6753, status: 'Unhealthy (Sensitive)', color: '#eab308', country: 'Saudi Arabia' },
-  // Europe
-  { name: 'London', aqi: 45, lat: 51.5074, lng: -0.1278, status: 'Good', color: '#10b981', country: 'UK' },
-  { name: 'Paris', aqi: 52, lat: 48.8566, lng: 2.3522, status: 'Moderate', color: '#22c55e', country: 'France' },
-  { name: 'Berlin', aqi: 38, lat: 52.52, lng: 13.405, status: 'Good', color: '#10b981', country: 'Germany' },
-  { name: 'Madrid', aqi: 48, lat: 40.4168, lng: -3.7038, status: 'Good', color: '#10b981', country: 'Spain' },
-  { name: 'Rome', aqi: 62, lat: 41.9028, lng: 12.4964, status: 'Moderate', color: '#22c55e', country: 'Italy' },
-  // Americas
-  { name: 'New York', aqi: 58, lat: 40.7128, lng: -74.006, status: 'Moderate', color: '#22c55e', country: 'USA' },
-  { name: 'Los Angeles', aqi: 85, lat: 34.0522, lng: -118.2437, status: 'Moderate', color: '#22c55e', country: 'USA' },
-  { name: 'Mexico City', aqi: 125, lat: 19.4326, lng: -99.1332, status: 'Unhealthy (Sensitive)', color: '#eab308', country: 'Mexico' },
-  { name: 'São Paulo', aqi: 78, lat: -23.5505, lng: -46.6333, status: 'Moderate', color: '#22c55e', country: 'Brazil' },
-  // Africa
-  { name: 'Cairo', aqi: 168, lat: 30.0444, lng: 31.2357, status: 'Unhealthy', color: '#f59e0b', country: 'Egypt' },
-  { name: 'Lagos', aqi: 156, lat: 6.5244, lng: 3.3792, status: 'Unhealthy', color: '#f59e0b', country: 'Nigeria' },
-  // Oceania
-  { name: 'Sydney', aqi: 42, lat: -33.8688, lng: 151.2093, status: 'Good', color: '#10b981', country: 'Australia' },
-  { name: 'Melbourne', aqi: 35, lat: -37.8136, lng: 144.9631, status: 'Good', color: '#10b981', country: 'Australia' },
-  // East Asia
-  { name: 'Tokyo', aqi: 48, lat: 35.6762, lng: 139.6503, status: 'Good', color: '#10b981', country: 'Japan' },
-  { name: 'Seoul', aqi: 89, lat: 37.5665, lng: 126.978, status: 'Moderate', color: '#22c55e', country: 'South Korea' },
-]
-
 export function WorldAQIMap() {
   const { playSound, vibrate } = useSound()
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
-  const markersRef = useRef<L.Marker[]>([])
+  const markersLayerRef = useRef<L.LayerGroup | null>(null)
   const [selectedCity, setSelectedCity] = useState<CityAQI | null>(null)
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [isLocating, setIsLocating] = useState(false)
   const [mapLoaded, setMapLoaded] = useState(false)
-  const [cities, setCities] = useState<CityAQI[]>(WORLD_CITIES)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+  const [cities, setCities] = useState<CityAQI[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [viewMode, setViewMode] = useState<'world' | 'india'>('world')
 
-  // Fetch live AQI data from WAQI API
-  const fetchLiveAQI = useCallback(async () => {
-    setIsRefreshing(true)
+  // Fetch live AQI data from our API
+  const fetchLiveAQI = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true)
+    setError(null)
+    
     try {
-      // Using WAQI public API - in production you'd use your own API key
-      const updatedCities = await Promise.all(
-        cities.map(async (city) => {
-          try {
-            const response = await fetch(
-              `https://api.waqi.info/feed/geo:${city.lat};${city.lng}/?token=demo`
-            )
-            const data = await response.json()
-            
-            if (data.status === 'ok' && data.data?.aqi) {
-              const aqi = typeof data.data.aqi === 'number' ? data.data.aqi : parseInt(data.data.aqi) || city.aqi
-              const colorInfo = getAQIColor(aqi)
-              return {
-                ...city,
-                aqi,
-                status: colorInfo.text,
-                color: colorInfo.bg
-              }
-            }
-            return city
-          } catch {
-            // Return existing data if fetch fails
-            return city
-          }
-        })
-      )
+      const response = await fetch(`/api/aqi?type=${viewMode}`, {
+        cache: 'no-store'
+      })
       
-      setCities(updatedCities)
-      setLastUpdated(new Date())
-      playSound('success')
-    } catch (error) {
-      console.error('Error fetching AQI data:', error)
+      if (!response.ok) {
+        throw new Error('Failed to fetch AQI data')
+      }
+      
+      const data = await response.json()
+      
+      if (data.success && data.data) {
+        setCities(data.data)
+        setLastUpdated(new Date(data.lastUpdated))
+        playSound('success')
+      } else {
+        throw new Error(data.error || 'Unknown error')
+      }
+    } catch (err) {
+      console.error('Error fetching AQI data:', err)
+      setError('Failed to load AQI data. Please try again.')
+      playSound('error')
     } finally {
-      setIsRefreshing(false)
+      setIsLoading(false)
     }
-  }, [cities, playSound])
+  }, [viewMode, playSound])
 
   // Initialize map
   useEffect(() => {
-    if (typeof window === 'undefined' || !mapRef.current || mapInstanceRef.current) return
+    if (typeof window === 'undefined' || !mapRef.current) return
+    
+    // Clean up existing map
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove()
+      mapInstanceRef.current = null
+    }
 
     const loadMap = async () => {
       // Load Leaflet CSS
@@ -153,6 +100,9 @@ export function WorldAQIMap() {
         document.head.appendChild(link)
       }
 
+      // Wait for CSS to load
+      await new Promise(resolve => setTimeout(resolve, 100))
+
       const map = L.map(mapRef.current!, {
         center: viewMode === 'india' ? [20.5937, 78.9629] : [20, 0],
         zoom: viewMode === 'india' ? 5 : 2,
@@ -163,6 +113,7 @@ export function WorldAQIMap() {
       })
 
       mapInstanceRef.current = map
+      markersLayerRef.current = L.layerGroup().addTo(map)
 
       // Dark theme map tiles
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -189,70 +140,75 @@ export function WorldAQIMap() {
     }
   }, [viewMode])
 
+  // Fetch data when component mounts or view mode changes
+  useEffect(() => {
+    fetchLiveAQI()
+  }, [fetchLiveAQI])
+
   // Update markers when cities data changes
   useEffect(() => {
-    if (!mapInstanceRef.current || !mapLoaded) return
+    if (!mapInstanceRef.current || !mapLoaded || !markersLayerRef.current) return
 
-    const updateMarkers = async () => {
-      // Clear existing markers
-      markersRef.current.forEach(marker => marker.remove())
-      markersRef.current = []
+    // Clear existing markers
+    markersLayerRef.current.clearLayers()
 
-      // Add new markers
-      cities.forEach((city) => {
-        const colorInfo = getAQIColor(city.aqi)
-        
-        const icon = L.divIcon({
-          className: 'custom-marker',
-          html: `
-            <div style="
-              width: 40px;
-              height: 40px;
-              background: ${colorInfo.bg};
-              border-radius: 50%;
-              border: 3px solid white;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-weight: bold;
-              font-size: 10px;
-              box-shadow: 0 4px 20px ${colorInfo.bg}80;
-              cursor: pointer;
-              transition: transform 0.2s;
-            ">
-              ${city.aqi}
-            </div>
-          `,
-          iconSize: [40, 40],
-          iconAnchor: [20, 20],
+    // Add new markers for each city
+    cities.forEach((city) => {
+      const colorInfo = getAQIColor(city.aqi)
+      
+      // Create custom marker with AQI value
+      const icon = L.divIcon({
+        className: 'custom-aqi-marker',
+        html: `
+          <div style="
+            position: relative;
+            width: 44px;
+            height: 44px;
+            background: ${colorInfo.bg};
+            border-radius: 50%;
+            border: 3px solid rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 11px;
+            box-shadow: 0 4px 15px ${colorInfo.bg}90, 0 2px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.2s;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+          ">
+            ${city.aqi}
+          </div>
+        `,
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+      })
+
+      const marker = L.marker([city.lat, city.lng], { icon })
+        .on('click', () => {
+          playSound('click')
+          vibrate(30)
+          setSelectedCity(city)
         })
 
-        const marker = L.marker([city.lat, city.lng], { icon })
-          .addTo(mapInstanceRef.current!)
-          .on('click', () => {
-            playSound('click')
-            vibrate(30)
-            setSelectedCity(city)
-          })
+      markersLayerRef.current!.addLayer(marker)
 
-        markersRef.current.push(marker)
-
-        // Add heatmap-style circle
-        L.circle([city.lat, city.lng], {
-          color: colorInfo.bg,
-          fillColor: colorInfo.bg,
-          fillOpacity: 0.15,
-          radius: city.aqi > 150 ? 80000 : 50000,
-          weight: 1,
-        }).addTo(mapInstanceRef.current!)
+      // Add heatmap-style circle around marker
+      const circle = L.circle([city.lat, city.lng], {
+        color: colorInfo.bg,
+        fillColor: colorInfo.bg,
+        fillOpacity: 0.15,
+        radius: Math.min(city.aqi * 400, 100000),
+        weight: 1,
+        opacity: 0.5
       })
-    }
-
-    updateMarkers()
+      
+      markersLayerRef.current!.addLayer(circle)
+    })
   }, [cities, mapLoaded, playSound, vibrate])
 
-  const handleViewChange = async (mode: 'world' | 'india') => {
+  const handleViewChange = (mode: 'world' | 'india') => {
     playSound('click')
     vibrate(30)
     setViewMode(mode)
@@ -266,18 +222,17 @@ export function WorldAQIMap() {
     }
   }
 
-  const getUserLocation = async () => {
+  const getUserLocation = () => {
     playSound('click')
     vibrate(30)
     setIsLocating(true)
     
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
-        async (position) => {
+        (position) => {
           const { latitude, longitude } = position.coords
-          setUserLocation({ lat: latitude, lng: longitude })
           
-          if (mapInstanceRef.current) {
+          if (mapInstanceRef.current && markersLayerRef.current) {
             const userIcon = L.divIcon({
               className: 'user-location-marker',
               html: `
@@ -288,7 +243,6 @@ export function WorldAQIMap() {
                   border-radius: 50%;
                   border: 4px solid white;
                   box-shadow: 0 0 20px #3b82f6, 0 0 40px #3b82f680;
-                  animation: pulse 2s infinite;
                 ">
                 </div>
               `,
@@ -296,8 +250,8 @@ export function WorldAQIMap() {
               iconAnchor: [10, 10],
             })
 
-            L.marker([latitude, longitude], { icon: userIcon })
-              .addTo(mapInstanceRef.current)
+            const userMarker = L.marker([latitude, longitude], { icon: userIcon })
+            markersLayerRef.current.addLayer(userMarker)
             
             mapInstanceRef.current.setView([latitude, longitude], 10)
           }
@@ -332,21 +286,34 @@ export function WorldAQIMap() {
     <div className="relative w-full h-[600px] rounded-xl overflow-hidden border border-emerald-500/20 dark:border-white/10">
       <div ref={mapRef} className="absolute inset-0 z-0" />
 
-      {!mapLoaded && (
-        <div className="absolute inset-0 bg-slate-900/90 flex items-center justify-center z-10">
-          <div className="flex items-center gap-3 text-white">
-            <Loader2 className="w-6 h-6 animate-spin" />
-            <span>Loading World AQI Map...</span>
+      {/* Loading State */}
+      {(isLoading || !mapLoaded) && (
+        <div className="absolute inset-0 bg-slate-900/90 flex items-center justify-center z-30">
+          <div className="flex flex-col items-center gap-3 text-white">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+            <span className="text-lg">Loading Live AQI Data...</span>
+            <span className="text-sm text-white/60">Fetching from Open-Meteo API</span>
           </div>
         </div>
       )}
 
-      {/* Controls */}
+      {/* Error State */}
+      {error && !isLoading && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30">
+          <div className="bg-red-500/90 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            <span className="text-sm">{error}</span>
+            <button onClick={handleRefresh} className="ml-2 underline">Retry</button>
+          </div>
+        </div>
+      )}
+
+      {/* View Toggle Controls */}
       <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
         <div className="flex gap-2">
           <Button
             onClick={() => handleViewChange('world')}
-            className={`${viewMode === 'world' ? 'bg-emerald-500' : 'glass'} border-emerald-500/30 text-white`}
+            className={`${viewMode === 'world' ? 'bg-emerald-500 hover:bg-emerald-600' : 'glass hover:bg-white/10'} border-emerald-500/30 text-white`}
             size="sm"
           >
             <Globe className="w-4 h-4 mr-1" />
@@ -354,20 +321,25 @@ export function WorldAQIMap() {
           </Button>
           <Button
             onClick={() => handleViewChange('india')}
-            className={`${viewMode === 'india' ? 'bg-emerald-500' : 'glass'} border-emerald-500/30 text-white`}
+            className={`${viewMode === 'india' ? 'bg-emerald-500 hover:bg-emerald-600' : 'glass hover:bg-white/10'} border-emerald-500/30 text-white`}
             size="sm"
           >
             India
           </Button>
         </div>
+        <div className="glass px-3 py-1 rounded text-xs text-white/80">
+          {cities.length} cities loaded
+        </div>
       </div>
 
+      {/* Right Side Controls */}
       <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
         <Button
           onClick={getUserLocation}
           disabled={isLocating}
           className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-lg border-0"
           size="sm"
+          title="Find my location"
         >
           {isLocating ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -378,11 +350,12 @@ export function WorldAQIMap() {
         
         <Button
           onClick={handleRefresh}
-          disabled={isRefreshing}
+          disabled={isLoading}
           className="glass border-emerald-500/30 text-white hover:bg-emerald-500/20"
           size="sm"
+          title="Refresh data"
         >
-          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
 
         <Button
@@ -402,16 +375,18 @@ export function WorldAQIMap() {
         </Button>
       </div>
 
-      {/* Last Updated */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
-        <Badge className="glass border-emerald-500/30 text-emerald-400">
-          Last updated: {lastUpdated.toLocaleTimeString()}
-        </Badge>
-      </div>
+      {/* Last Updated Badge */}
+      {lastUpdated && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
+          <Badge className="glass border-emerald-500/30 text-emerald-400">
+            Live Data - Updated: {lastUpdated.toLocaleTimeString()}
+          </Badge>
+        </div>
+      )}
 
-      {/* Selected City Info */}
+      {/* Selected City Info Card */}
       {selectedCity && (
-        <Card className="absolute bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-20 glass p-4 border-emerald-500/30 dark:border-white/20">
+        <Card className="absolute bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-20 glass p-4 border-emerald-500/30 dark:border-white/20">
           <div className="flex items-start justify-between mb-3">
             <div>
               <h3 className="font-bold text-lg text-foreground dark:text-white">{selectedCity.name}</h3>
@@ -425,25 +400,25 @@ export function WorldAQIMap() {
             </div>
             <button 
               onClick={() => { playSound('click'); setSelectedCity(null) }} 
-              className="text-muted-foreground dark:text-white/50 hover:text-foreground dark:hover:text-white text-xl"
+              className="text-muted-foreground dark:text-white/50 hover:text-foreground dark:hover:text-white text-xl font-bold"
             >
               ×
             </button>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 mb-4">
             <div 
-              className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg"
+              className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg flex-shrink-0"
               style={{ backgroundColor: selectedCity.color }}
             >
               <span className="text-white font-bold text-2xl">{selectedCity.aqi}</span>
             </div>
             <div className="flex-1">
-              <p className="text-sm text-muted-foreground dark:text-white/70 mb-2">
+              <p className="text-sm text-muted-foreground dark:text-white/70">
                 {selectedCity.aqi <= 50 
                   ? 'Air quality is satisfactory. Enjoy outdoor activities!'
                   : selectedCity.aqi <= 100
-                  ? 'Acceptable air quality. Sensitive individuals should limit prolonged outdoor exposure.'
+                  ? 'Acceptable. Sensitive individuals should limit prolonged outdoor exposure.'
                   : selectedCity.aqi <= 150
                   ? 'Sensitive groups should reduce outdoor activities.'
                   : selectedCity.aqi <= 200
@@ -452,12 +427,52 @@ export function WorldAQIMap() {
               </p>
             </div>
           </div>
+
+          {/* Pollutant Details */}
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            {selectedCity.pm25 !== undefined && (
+              <div className="bg-white/10 dark:bg-black/20 rounded p-2 text-center">
+                <div className="text-muted-foreground dark:text-white/50">PM2.5</div>
+                <div className="font-bold text-foreground dark:text-white">{selectedCity.pm25}</div>
+              </div>
+            )}
+            {selectedCity.pm10 !== undefined && (
+              <div className="bg-white/10 dark:bg-black/20 rounded p-2 text-center">
+                <div className="text-muted-foreground dark:text-white/50">PM10</div>
+                <div className="font-bold text-foreground dark:text-white">{selectedCity.pm10}</div>
+              </div>
+            )}
+            {selectedCity.o3 !== undefined && (
+              <div className="bg-white/10 dark:bg-black/20 rounded p-2 text-center">
+                <div className="text-muted-foreground dark:text-white/50">O₃</div>
+                <div className="font-bold text-foreground dark:text-white">{selectedCity.o3}</div>
+              </div>
+            )}
+            {selectedCity.no2 !== undefined && (
+              <div className="bg-white/10 dark:bg-black/20 rounded p-2 text-center">
+                <div className="text-muted-foreground dark:text-white/50">NO₂</div>
+                <div className="font-bold text-foreground dark:text-white">{selectedCity.no2}</div>
+              </div>
+            )}
+            {selectedCity.so2 !== undefined && (
+              <div className="bg-white/10 dark:bg-black/20 rounded p-2 text-center">
+                <div className="text-muted-foreground dark:text-white/50">SO₂</div>
+                <div className="font-bold text-foreground dark:text-white">{selectedCity.so2}</div>
+              </div>
+            )}
+            {selectedCity.co !== undefined && (
+              <div className="bg-white/10 dark:bg-black/20 rounded p-2 text-center">
+                <div className="text-muted-foreground dark:text-white/50">CO</div>
+                <div className="font-bold text-foreground dark:text-white">{selectedCity.co}</div>
+              </div>
+            )}
+          </div>
         </Card>
       )}
 
-      {/* Legend */}
+      {/* AQI Legend */}
       <div className="absolute bottom-4 left-4 z-20 glass p-3 rounded-lg hidden md:block border-emerald-500/30 dark:border-white/20">
-        <h4 className="text-xs font-bold text-foreground dark:text-white mb-2">AQI Scale</h4>
+        <h4 className="text-xs font-bold text-foreground dark:text-white mb-2">AQI Scale (US EPA)</h4>
         <div className="space-y-1">
           {[
             { label: 'Good (0-50)', color: '#10b981' },
@@ -468,7 +483,7 @@ export function WorldAQIMap() {
             { label: 'Hazardous (300+)', color: '#7c2d12' },
           ].map((item) => (
             <div key={item.label} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+              <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
               <span className="text-xs text-muted-foreground dark:text-white/80">{item.label}</span>
             </div>
           ))}
